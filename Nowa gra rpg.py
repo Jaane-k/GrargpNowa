@@ -3,15 +3,40 @@ from random import randint, choice, random
 
 # ---------------------------------
 class Player:
-    def __init__(self, name, life, mana, gold, experience, level):
+    def __init__(self, name, life=100, mana=100, gold=50, experience=0, level=1):
         self.name = name
         self.life = life
         self.mana = mana
         self.gold = gold
         self.experience = experience
         self.level = level
+        self.inventory = []
 
+    def display_inventory(self):
+        print("Twój ekwipunek:")
+        if not self.inventory:
+            print("Ekwipunek jest pusty.")
+        else:
+            for item in self.inventory:
+                print(f"- {item['name']}")
 
+    def gain_experience(self, experience_points):
+        self.experience += experience_points
+        print(f"Zdobywasz {experience_points} punktów doświadczenia!")
+
+        if self.experience >= 30:
+            self.level += 1
+            self.experience = 0
+            print(f"Awansowałeś na poziom {self.level}!")
+
+            if self.level == 2:
+                print("Odblokowano nowy atak: Mocny Atak!")
+            elif self.level == 3:
+                print("Odblokowano nowy atak: Błyskawiczny Atak!")
+
+    def display_stats(self):
+        print(f"Masz {self.life} HP, {self.mana} many, {self.gold} złota, Poziom {self.level}, Doświadczenie {self.experience}")
+        
 # ---------------------------------
 def zwykly_atak():
     return randint(3, 10)
@@ -106,25 +131,36 @@ class Shop:
         self.player_level = player_level
 
     def display_items(self):
-        print("Witaj w sklepie! Dostępne przedmioty:")
+        print(f"Witaj w sklepie! Masz dostępne przedmioty:")
+        print(f"Aktualna ilość złota: {player.gold}")
+        
         for i, item in enumerate(self.items, 1):
             if item['level'] <= self.player_level:
                 print(f"{i}. {item['name']} - {item['price']} złota")
             else:
                 print(f"{i}. {item['name']} - Poziom {item['level']} (wymaga poziomu {item['level']})")
 
-    def buy_item(self, player_gold, item_choice):
-        if item_choice <= len(self.items) and self.items[item_choice - 1]["level"] <= player_level:
-            if player_gold >= self.items[item_choice - 1]["price"]:
-                print("Transakcja udana! Kupiłeś przedmiot.")
-                return player_gold - self.items[item_choice - 1]["price"], item_choice
+    def buy_item(self, player_gold, category_choice):
+        valid_categories = ["health_potion", "weapon", "mana_potion", "armor"]
+        category_index = category_choice - 1
+
+        if 0 <= category_index < len(valid_categories):
+            category_items = [item for item in self.items if item["type"] == valid_categories[category_index]]
+            if category_items and category_items[0]["level"] <= player.level:  
+                item = category_items[0]
+                if player_gold >= item["price"]:
+                    print(f"Transakcja udana! Kupiłeś przedmiot: {item['name']}.")
+                    player.inventory.append(item)
+                    return player_gold - item["price"], category_choice
+                else:
+                    print("Masz za mało złota. Nie stać cię na ten przedmiot.")
+                    return player_gold, 0
             else:
-                print("Masz za mało złota. Nie stać cię na ten przedmiot.")
+                print("Brak dostępnych przedmiotów w danej kategorii lub masz za niski level.")
                 return player_gold, 0
         else:
-            print("Niepoprawny wybór przedmiotu.")
+            print("Niepoprawny wybór kategorii.")
             return player_gold, 0
-
 
 # ---------------------------------
 def casino():
@@ -136,8 +172,8 @@ def casino():
 
     chance = random()
     if chance < 0.5:
-        print("1. Wygrać podwójną ilość złota.")
-        print("2. Stracić połowę złota.")
+        print("Wygrać podwójną ilość złota.")
+        print("Stracić połowę złota.")
         choice = input("Wybierz 1 lub 2: ")
         if choice == "1":
             print("Gratulacje! Wygrałeś podwójną ilość złota!")
@@ -148,8 +184,8 @@ def casino():
         else:
             print("Niepoprawny wybór. Gra kończy się bez zmian.")
     else:
-        print("3. Wygrać pięciokrotność złota.")
-        print("4. Stracić całe złoto.")
+        print("Wygrać pięciokrotność złota.")
+        print("Stracić całe złoto.")
         choice = input("Wybierz 3 lub 4: ")
         if choice == "3":
             print("Gratulacje! Wygrałeś pięciokrotność złota!")
@@ -166,12 +202,6 @@ shop_items = [
     {"name": "Miecz", "price": 50, "level": 2, "type": "weapon"},
     {"name": "Eliksir many", "price": 30, "level": 3, "type": "mana_potion"},
     {"name": "Zbroja", "price": 60, "level": 4, "type": "armor"},
-    {"name": "Runiczny Amulet", "price": 100, "level": 5, "type": "amulet"},
-    {"name": "Potężna Mikstura", "price": 80, "level": 6, "type": "health_potion"},
-    {"name": "Kusza", "price": 70, "level": 7, "type": "weapon"},
-    {"name": "Zaklęty Medalion", "price": 120, "level": 8, "type": "amulet"},
-    {"name": "Hełm Smoka", "price": 150, "level": 9, "type": "armor"},
-    {"name": "Miecz Zemsty", "price": 200, "level": 10, "type": "weapon"}
 ]
 
 # ---------------------------------
@@ -214,7 +244,7 @@ def play_game():
             if player.life <= 0:
                 break
 
-            print(f"Masz {player.life} HP, {player.mana} many, {player.gold} złota, Poziom {player.level}, Doświadczenie {player.experience}")
+            player.display_stats()
             atak = wybierz_atak()
             opponent[1] -= atak
             print(f"Zadałeś {atak} obrażeń")
@@ -222,28 +252,32 @@ def play_game():
         if opponent[1] <= 0:
             print('Zabiłeś przeciwnika!!!')
             number_of_defeated_opponents += 1
-            player.gold += randint(5, 15) 
+            player.gold += randint(5, 15)
             gain_experience(opponent[4])
 
         print(f"Aktualna ilość złota: {player.gold}")
 
         print("\nWchodzisz do kasyna:")
-        casino() 
+        casino()
 
         print("\nWchodzisz do sklepu:")
         shop.display_items()
-        item_choice = int(input("Wybierz numer przedmiotu do zakupu (lub 0, aby zakończyć zakupy): "))
-        if item_choice == 0:
-            break 
+        try:
+            item_choice = int(input("Wybierz numer przedmiotu do zakupu (lub 0, aby zakończyć zakupy): "))
+            if item_choice == 0:
+                break
 
-        player.gold, bought_item = shop.buy_item(player.gold, item_choice)
-        if bought_item:
-            if shop_items[bought_item - 1]["type"] == "health_potion":
-                healing_value = mikstura_zdrowia()
-                print(f"Wypijasz Miksturę Zdrowia i odzyskujesz {healing_value} punktów życia.")
-            elif shop_items[bought_item - 1]["type"] == "mana_potion":
-                mana_value = mikstura_many()
-                print(f"Wypijasz Miksturę Many i odzyskujesz {mana_value} many.")
+            player.gold, bought_item = shop.buy_item(player.gold, item_choice)
+            if bought_item:
+                player.display_inventory()
+                if shop_items[bought_item - 1]["type"] == "health_potion":
+                    healing_value = mikstura_zdrowia()
+                    print(f"Wypijasz Miksturę Zdrowia i odzyskujesz {healing_value} punktów życia.")
+                elif shop_items[bought_item - 1]["type"] == "mana_potion":
+                    mana_value = mikstura_many()
+                    print(f"Wypijasz Miksturę Many i odzyskujesz {mana_value} many.")
+        except ValueError:
+            print("Wprowadzono niepoprawną wartość. Spróbuj jeszcze raz.")
 
     print("-" * 40)
     print("KONIEC GRY!")
